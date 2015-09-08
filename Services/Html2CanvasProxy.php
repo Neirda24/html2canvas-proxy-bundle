@@ -441,7 +441,7 @@ class Html2CanvasProxy
                 $m .= '#' . $pu['fragment'];
             }
 
-            return relativeToAbsolute($pu['scheme'] . '://' . $pu['host'], $m);
+            return $this->relativeToAbsolute($pu['scheme'] . '://' . $pu['host'], $m);
         }
 
         if (preg_match('/^[?#]/', $m) !== 0) {
@@ -688,7 +688,7 @@ class Html2CanvasProxy
                         }
 
                         $nextUri = $data;
-                        $data    = relativeToAbsolute($url, $data);
+                        $data    = $this->relativeToAbsolute($url, $data);
 
                         if ($data === '') {
                             return ['error' => 'Invalid scheme in url (' . $nextUri . ')'];
