@@ -115,6 +115,8 @@ class Html2CanvasProxy
 
     public function execute()
     {
+        $this->initRequest();
+
         if (isset($_GET['callback']) && strlen($_GET['callback']) > 0) {
             $this->paramCallback = $_GET['callback'];
         }
@@ -562,21 +564,21 @@ class Html2CanvasProxy
         }
 
         //$basename .= $basename;
-        $this->tmpMime = '.' . mt_rand(0, 1000) . '_';
+        $tmpMine = '.' . mt_rand(0, 1000) . '_';
         if ($isEncode === true) {
-            $this->tmpMime .= isset($_SERVER['REQUEST_TIME']) && strlen($_SERVER['REQUEST_TIME']) > 0 ? $_SERVER['REQUEST_TIME'] : (string)time();
+            $tmpMine .= isset($_SERVER['REQUEST_TIME']) && strlen($_SERVER['REQUEST_TIME']) > 0 ? $_SERVER['REQUEST_TIME'] : (string)time();
         } else {
-            $this->tmpMime .= (string)$this->initExec;
+            $tmpMine .= (string)$this->initExec;
         }
 
-        if (file_exists($folder . $basename . $this->tmpMime)) {
+        if (file_exists($folder . $basename . $tmpMine)) {
             return $this->createTmpFile($basename, true);
         }
 
-        $source = fopen($folder . $basename . $this->tmpMime, 'w');
+        $source = fopen($folder . $basename . $tmpMine, 'w');
         if ($source !== false) {
             return [
-                'location' => $folder . $basename . $this->tmpMime,
+                'location' => $folder . $basename . $tmpMine,
                 'source'   => $source
             ];
         }
@@ -607,7 +609,7 @@ class Html2CanvasProxy
         $secure = strcasecmp($uri['scheme'], 'https') === 0;
 
         if ($secure) {
-            $this->response = supportSSL();
+            $this->response = $this->supportSSL();
             if ($this->response !== true) {
                 return ['error' => $this->response];
             }
@@ -730,8 +732,8 @@ class Html2CanvasProxy
                         $data = strtolower($data);
 
                         if (preg_match('#[;](\s|)+charset[=]#', $data) !== 0) {
-                            $this->tmp2   = preg_split('#[;](\s|)+charset[=]#', $data);
-                            $encode = isset($this->tmp2[1]) ? trim($this->tmp2[1]) : null;
+                            $tmp2   = preg_split('#[;](\s|)+charset[=]#', $data);
+                            $encode = isset($tmp2[1]) ? trim($tmp2[1]) : null;
                         }
 
                         $mime = trim(
