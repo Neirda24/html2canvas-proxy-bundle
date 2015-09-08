@@ -47,13 +47,31 @@ class Html2CanvasProxy
     protected $crossDomain = false;
 
     /**
+     * @var string
+     */
+    protected $eol;
+
+    /**
+     * @var string
+     */
+    protected $wol;
+
+    /**
+     * @var string
+     */
+    protected $gmDateCache;
+
+    /**
      * @param string $imagesPath
      * @param string $crossDomain
      */
     public function __construct($imagesPath, $crossDomain)
     {
-        $this->imagesPath = $imagesPath;
+        $this->imagesPath  = $imagesPath;
         $this->crossDomain = $crossDomain;
+        $this->eol         = chr(10);
+        $this->wol         = chr(13);
+        $this->gmDateCache = gmdate('D, d M Y H:i:s');
     }
 
     public function execute()
@@ -64,35 +82,35 @@ class Html2CanvasProxy
 
         if (isset($_SERVER['HTTP_HOST']) === false || strlen($_SERVER['HTTP_HOST']) === 0) {
             $response = ['error' => 'The client did not send the Host header'];
-        } else if (isset($_SERVER['SERVER_PORT']) === false) {
+        } elseif (isset($_SERVER['SERVER_PORT']) === false) {
             $response = ['error' => 'The Server-proxy did not send the PORT (configure PHP)'];
-        } else if (MAX_EXEC < 10) {
+        } elseif (MAX_EXEC < 10) {
             $response = ['error' => 'Execution time is less 15 seconds, configure this with ini_set/set_time_limit or "php.ini" (if safe_mode is enabled), recommended time is 30 seconds or more'];
-        } else if (MAX_EXEC <= self::SOCKET_TIMEOUT) {
+        } elseif (MAX_EXEC <= self::SOCKET_TIMEOUT) {
             $response = ['error' => 'The execution time is not configured enough to self::SOCKET_TIMEOUT in SOCKET, configure this with ini_set/set_time_limit or "php.ini" (if safe_mode is enabled), recommended that the "max_execution_time =;" be a minimum of 5 seconds longer or reduce the self::SOCKET_TIMEOUT in "define(\'self::SOCKET_TIMEOUT\', ' . self::SOCKET_TIMEOUT . ');"'];
-        } else if (isset($_GET['url']) === false || strlen($_GET['url']) === 0) {
+        } elseif (isset($_GET['url']) === false || strlen($_GET['url']) === 0) {
             $response = ['error' => 'No such parameter "url"'];
-        } else if (isHttpUrl($_GET['url']) === false) {
+        } elseif (isHttpUrl($_GET['url']) === false) {
             $response = ['error' => 'Only http scheme and https scheme are allowed'];
-        } else if (preg_match('#[^A-Za-z0-9_[.]\\[\\]]#', $param_callback) !== 0) {
-            $response = ['error' => 'Parameter "callback" contains invalid characters'];
+        } elseif (preg_match('#[^A-Za-z0-9_[.]\\[\\]]#', $param_callback) !== 0) {
+            $response       = ['error' => 'Parameter "callback" contains invalid characters'];
             $param_callback = self::JS_LOG;
-        } else if (createFolder() === false) {
-            $err = get_error();
+        } elseif (createFolder() === false) {
+            $err      = get_error();
             $response = ['error' => 'Can not create directory' . (
                 $err !== null && isset($err['message']) && strlen($err['message']) > 0 ? (': ' . $err['message']) : ''
                 )];
-            $err = null;
+            $err      = null;
         } else {
             $http_port = (int)$_SERVER['SERVER_PORT'];
 
             $tmp = createTmpFile($_GET['url'], false);
             if ($tmp === false) {
-                $err = get_error();
+                $err      = get_error();
                 $response = ['error' => 'Can not create file' . (
                     $err !== null && isset($err['message']) && strlen($err['message']) > 0 ? (': ' . $err['message']) : ''
                     )];
-                $err = null;
+                $err      = null;
             } else {
                 $response = downloadSource($_GET['url'], $tmp['source'], 0);
                 fclose($tmp['source']);
@@ -103,7 +121,7 @@ class Html2CanvasProxy
             clearstatcache();
             if (false === file_exists($tmp['location'])) {
                 $response = ['error' => 'Request was downloaded, but file can not be found, try again'];
-            } else if (filesize($tmp['location']) < 1) {
+            } elseif (filesize($tmp['location']) < 1) {
                 $response = ['error' => 'Request was downloaded, but there was some problem and now the file is empty, try again'];
             } else {
                 $extension = str_replace(['image/', 'text/', 'application/'], '', $response['mime']);
@@ -193,11 +211,6 @@ class Html2CanvasProxy
 
     protected function init()
     {
-        //constants
-        define('EOL', chr(10));
-        define('WOL', chr(13));
-        define('GMDATECACHE', gmdate('D, d M Y H:i:s'));
-
         /*
         If execution has reached the time limit prevents page goes blank (off errors)
         or generate an error in PHP, which does not work with the DEBUG (from html2canvas.js)
@@ -220,37 +233,40 @@ class Html2CanvasProxy
         header('Content-Type: application/javascript');
 
         $param_callback = self::JS_LOG;//force use alternative log error
-        $tmp = null;//tmp var usage
-        $response = [];
+        $tmp            = null;//tmp var usage
+        $response       = [];
     }
 
     /**
      * For show ASCII documents with "data uri scheme"
+     *
      * @param string $str to encode
+     *
      * @return string      always return string
      */
     protected function asciiToInline($str)
     {
-        $trans = [];
-        $trans[EOL] = '%0A';
-        $trans[WOL] = '%0D';
-        $trans[' '] = '%20';
-        $trans['"'] = '%22';
-        $trans['#'] = '%23';
-        $trans['&'] = '%26';
-        $trans['\/'] = '%2F';
-        $trans['\\'] = '%5C';
-        $trans[':'] = '%3A';
-        $trans['?'] = '%3F';
-        $trans[chr(0)] = '%00';
-        $trans[chr(8)] = '';
-        $trans[chr(9)] = '%09';
+        $trans             = [];
+        $trans[$this->eol] = '%0A';
+        $trans[$this->wol] = '%0D';
+        $trans[' ']        = '%20';
+        $trans['"']        = '%22';
+        $trans['#']        = '%23';
+        $trans['&']        = '%26';
+        $trans['\/']       = '%2F';
+        $trans['\\']       = '%5C';
+        $trans[':']        = '%3A';
+        $trans['?']        = '%3F';
+        $trans[chr(0)]     = '%00';
+        $trans[chr(8)]     = '';
+        $trans[chr(9)]     = '%09';
 
         return strtr($str, $trans);
     }
 
     /**
      * Detect SSL stream transport
+     *
      * @return boolean|string        If returns string has an problem, returns true if ok
      */
     protected function supportSSL()
@@ -262,6 +278,7 @@ class Html2CanvasProxy
         /* PHP 5 */
         if (in_array('ssl', stream_get_transports())) {
             defined('SOCKET_SSL_STREAM', '1');
+
             return true;
         }
 
@@ -270,6 +287,7 @@ class Html2CanvasProxy
 
     /**
      * set headers in document
+     *
      * @return void return always void
      */
     protected function remove_old_files()
@@ -297,6 +315,7 @@ class Html2CanvasProxy
 
     /**
      * this function does not exist by default in php4.3, get detailed error in php5
+     *
      * @return array   if has errors
      */
     protected function get_error()
@@ -304,21 +323,24 @@ class Html2CanvasProxy
         if (function_exists('error_get_last') === false) {
             return error_get_last();
         }
+
         return null;
     }
 
     /**
      * enconde string in "json" (only strings), json_encode (native in php) don't support for php4
+     *
      * @param string $s to encode
-     * @param bool $onlyEncode
+     * @param bool   $onlyEncode
+     *
      * @return string always return string
      */
     protected function JsonEncodeString($s, $onlyEncode = false)
     {
-        $vetor = [];
-        $vetor[0] = '\\0';
-        $vetor[8] = '\\b';
-        $vetor[9] = '\\t';
+        $vetor     = [];
+        $vetor[0]  = '\\0';
+        $vetor[8]  = '\\b';
+        $vetor[9]  = '\\t';
         $vetor[10] = '\\n';
         $vetor[12] = '\\f';
         $vetor[13] = '\\r';
@@ -328,19 +350,19 @@ class Html2CanvasProxy
 
         $tmp = '';
         $enc = '';
-        $j = strlen($s);
+        $j   = strlen($s);
 
         for ($i = 0; $i < $j; ++$i) {
             $tmp = substr($s, $i, 1);
-            $c = ord($tmp);
+            $c   = ord($tmp);
             if ($c > 126) {
-                $d = '000' . dechex($c);
+                $d   = '000' . dechex($c);
                 $tmp = '\\u' . substr($d, strlen($d) - 4);
             } else {
                 if (isset($vetor[$c])) {
                     $tmp = $vetor[$c];
-                } else if (($c > 31) === false) {
-                    $d = '000' . dechex($c);
+                } elseif (($c > 31) === false) {
+                    $d   = '000' . dechex($c);
                     $tmp = '\\u' . substr($d, strlen($d) - 4);
                 }
             }
@@ -357,14 +379,16 @@ class Html2CanvasProxy
 
     /**
      * set headers in document
+     *
      * @param boolean $nocache If false set cache (if self::CCACHE > 0), If true set no-cache in document
+     *
      * @return void                 return always void
      */
     protected function setHeaders($nocache)
     {
         if ($nocache === false && is_int(self::CCACHE) && self::CCACHE > 0) {
             //save to browser cache
-            header('Last-Modified: ' . GMDATECACHE . ' GMT');
+            header('Last-Modified: ' . $this->gmDateCache . ' GMT');
             header('Cache-Control: max-age=' . (self::CCACHE - 1));
             header('Pragma: max-age=' . (self::CCACHE - 1));
             header('Expires: ' . gmdate('D, d M Y H:i:s', INIT_EXEC + self::CCACHE - 1));
@@ -373,7 +397,7 @@ class Html2CanvasProxy
             //no-cache
             header('Pragma: no-cache');
             header('Cache-Control: no-cache');
-            header('Expires: ' . GMDATECACHE . ' GMT');
+            header('Expires: ' . $this->gmDateCache . ' GMT');
         }
 
         //set access-control
@@ -385,8 +409,10 @@ class Html2CanvasProxy
 
     /**
      * Converte relative-url to absolute-url
+     *
      * @param string $u set base url
      * @param string $m set relative url
+     *
      * @return string         return always string, if have an error, return blank string (scheme invalid)
      */
     protected function relativeToAbsolute($u, $m)
@@ -422,10 +448,10 @@ class Html2CanvasProxy
             return $u . $m;
         }
 
-        $pu = parse_url($u);
+        $pu         = parse_url($u);
         $pu['path'] = isset($pu['path']) ? preg_replace('#/[^/]*$#', '', $pu['path']) : '';
 
-        $pm = parse_url('http://1/' . $m);
+        $pm         = parse_url('http://1/' . $m);
         $pm['path'] = isset($pm['path']) ? $pm['path'] : '';
 
         $isPath = $pm['path'] !== '' && strpos(strrev($pm['path']), '/') === 0 ? true : false;
@@ -438,7 +464,7 @@ class Html2CanvasProxy
         $b = str_replace('\\', '/', $b);//Confuso ???
 
         $ab = explode('/', $b);
-        $j = count($ab);
+        $j  = count($ab);
 
         $ab = array_filter($ab, 'strlen');
         $nw = [];
@@ -474,7 +500,9 @@ class Html2CanvasProxy
 
     /**
      * validate url
+     *
      * @param string $u set base url
+     *
      * @return boolean   return always boolean
      */
     protected function isHttpUrl($u)
@@ -484,6 +512,7 @@ class Html2CanvasProxy
 
     /**
      * create folder for images download
+     *
      * @return boolean      return always boolean
      */
     protected function createFolder()
@@ -491,13 +520,16 @@ class Html2CanvasProxy
         if (file_exists($this->imagesPath) === false || is_dir($this->imagesPath) === false) {
             return mkdir($this->imagesPath, 0755);
         }
+
         return true;
     }
 
     /**
      * create temp file which will receive the download
-     * @param string $basename set url
+     *
+     * @param string  $basename set url
      * @param boolean $isEncode If true uses the "first" temporary name
+     *
      * @return boolean|array        If you can not create file return false, If create file return array
      */
     protected function createTmpFile($basename, $isEncode)
@@ -523,21 +555,24 @@ class Html2CanvasProxy
         if ($source !== false) {
             return [
                 'location' => $folder . $basename . $tmpMime,
-                'source' => $source
+                'source'   => $source
             ];
         }
+
         return false;
     }
 
     /**
      * download http request recursive (If found HTTP 3xx)
-     * @param string $url to download
+     *
+     * @param string   $url      to download
      * @param resource $toSource to download
+     *
      * @return array                    retuns array
      */
     protected function downloadSource($url, $toSource, $caller)
     {
-        $errno = 0;
+        $errno  = 0;
         $errstr = '';
 
         ++$caller;
@@ -546,7 +581,7 @@ class Html2CanvasProxy
             return ['error' => 'Limit of ' . self::REDIRECT_MAX_LOOP . ' redirects was exceeded, maybe there is a problem: ' . $url];
         }
 
-        $uri = parse_url($url);
+        $uri    = parse_url($url);
         $secure = strcasecmp($uri['scheme'], 'https') === 0;
 
         if ($secure) {
@@ -568,35 +603,35 @@ class Html2CanvasProxy
                 isset($uri['path']) && strlen($uri['path']) > 0 ? $uri['path'] : '/'
                 ) . (
                 isset($uri['query']) && strlen($uri['query']) > 0 ? ('?' . $uri['query']) : ''
-                ) . ' HTTP/1.0' . WOL . EOL
+                ) . ' HTTP/1.0' . $this->wol . $this->eol
             );
 
             if (isset($uri['user'])) {
                 $auth = base64_encode($uri['user'] . ':' . (isset($uri['pass']) ? $uri['pass'] : ''));
-                fwrite($fp, 'Authorization: Basic ' . $auth . WOL . EOL);
+                fwrite($fp, 'Authorization: Basic ' . $auth . $this->wol . $this->eol);
             }
 
             if (isset($_SERVER['HTTP_ACCEPT']) && strlen($_SERVER['HTTP_ACCEPT']) > 0) {
-                fwrite($fp, 'Accept: ' . $_SERVER['HTTP_ACCEPT'] . WOL . EOL);
+                fwrite($fp, 'Accept: ' . $_SERVER['HTTP_ACCEPT'] . $this->wol . $this->eol);
             }
 
             if (isset($_SERVER['HTTP_USER_AGENT']) && strlen($_SERVER['HTTP_USER_AGENT']) > 0) {
-                fwrite($fp, 'User-Agent: ' . $_SERVER['HTTP_USER_AGENT'] . WOL . EOL);
+                fwrite($fp, 'User-Agent: ' . $_SERVER['HTTP_USER_AGENT'] . $this->wol . $this->eol);
             }
 
             if (isset($_SERVER['HTTP_REFERER']) && strlen($_SERVER['HTTP_REFERER']) > 0) {
-                fwrite($fp, 'Referer: ' . $_SERVER['HTTP_REFERER'] . WOL . EOL);
+                fwrite($fp, 'Referer: ' . $_SERVER['HTTP_REFERER'] . $this->wol . $this->eol);
             }
 
-            fwrite($fp, 'Host: ' . $uri['host'] . WOL . EOL);
-            fwrite($fp, 'Connection: close' . WOL . EOL . WOL . EOL);
+            fwrite($fp, 'Host: ' . $uri['host'] . $this->wol . $this->eol);
+            fwrite($fp, 'Connection: close' . $this->wol . $this->eol . $this->wol . $this->eol);
 
             $isRedirect = true;
-            $isBody = false;
-            $isHttp = false;
-            $encode = null;
-            $mime = null;
-            $data = '';
+            $isBody     = false;
+            $isHttp     = false;
+            $encode     = null;
+            $mime       = null;
+            $data       = '';
 
             while (false === feof($fp)) {
                 if (MAX_EXEC !== 0 && (time() - INIT_EXEC) >= MAX_EXEC) {
@@ -613,6 +648,7 @@ class Html2CanvasProxy
                     if (preg_match('#^HTTP[/]1[.]#i', $data) === 0) {
                         fclose($fp);//Close connection
                         $data = '';
+
                         return ['error' => 'This request did not return a HTTP response valid'];
                     }
 
@@ -623,6 +659,7 @@ class Html2CanvasProxy
                     if ($tmp === '304') {
                         fclose($fp);//Close connection
                         $data = '';
+
                         return ['error' => 'Request returned HTTP_304, this status code is incorrect because the html2canvas not send Etag'];
                     } else {
                         $isRedirect = preg_match('#^(301|302|303|307|308)$#', $tmp) !== 0;
@@ -630,6 +667,7 @@ class Html2CanvasProxy
                         if ($isRedirect === false && $tmp !== '200') {
                             fclose($fp);
                             $data = '';
+
                             return ['error' => 'Request returned HTTP_' . $tmp];
                         }
 
@@ -650,7 +688,7 @@ class Html2CanvasProxy
                         }
 
                         $nextUri = $data;
-                        $data = relativeToAbsolute($url, $data);
+                        $data    = relativeToAbsolute($url, $data);
 
                         if ($data === '') {
                             return ['error' => 'Invalid scheme in url (' . $nextUri . ')'];
@@ -659,16 +697,18 @@ class Html2CanvasProxy
                         if (isHttpUrl($data) === false) {
                             return ['error' => '"Location:" header redirected for a non-http url (' . $data . ')'];
                         }
+
                         return downloadSource($data, $toSource, $caller);
-                    } else if (preg_match('#^content[-]length[:]( 0|0)$#i', $data) !== 0) {
+                    } elseif (preg_match('#^content[-]length[:]( 0|0)$#i', $data) !== 0) {
                         fclose($fp);
                         $data = '';
+
                         return ['error' => 'source is blank (Content-length: 0)'];
-                    } else if (preg_match('#^content[-]type[:]#i', $data) !== 0) {
+                    } elseif (preg_match('#^content[-]type[:]#i', $data) !== 0) {
                         $data = strtolower($data);
 
                         if (preg_match('#[;](\s|)+charset[=]#', $data) !== 0) {
-                            $tmp2 = preg_split('#[;](\s|)+charset[=]#', $data);
+                            $tmp2   = preg_split('#[;](\s|)+charset[=]#', $data);
                             $encode = isset($tmp2[1]) ? trim($tmp2[1]) : null;
                         }
 
@@ -690,19 +730,22 @@ class Html2CanvasProxy
                         ) {
                             fclose($fp);
                             $data = '';
+
                             return ['error' => $mime . ' mimetype is invalid'];
                         }
-                    } else if ($isBody === false && trim($data) === '') {
+                    } elseif ($isBody === false && trim($data) === '') {
                         $isBody = true;
                         continue;
                     }
-                } else if ($isRedirect === true) {
+                } elseif ($isRedirect === true) {
                     fclose($fp);
                     $data = '';
+
                     return ['error' => 'The response should be a redirect "' . $url . '", but did not inform which header "Localtion:"'];
-                } else if ($mime === null) {
+                } elseif ($mime === null) {
                     fclose($fp);
                     $data = '';
+
                     return ['error' => 'Not set the mimetype from "' . $url . '"'];
                 } else {
                     fwrite($toSource, $data);
@@ -716,12 +759,12 @@ class Html2CanvasProxy
 
             if ($isBody === false) {
                 return ['error' => 'Content body is empty'];
-            } else if ($mime === null) {
+            } elseif ($mime === null) {
                 return ['error' => 'Not set the mimetype from "' . $url . '"'];
             }
 
             return [
-                'mime' => $mime,
+                'mime'   => $mime,
                 'encode' => $encode
             ];
         }
