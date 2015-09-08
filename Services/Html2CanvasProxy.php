@@ -20,13 +20,13 @@ class Html2CanvasProxy
             $response = array('error' => 'The execution time is not configured enough to TIMEOUT in SOCKET, configure this with ini_set/set_time_limit or "php.ini" (if safe_mode is enabled), recommended that the "max_execution_time =;" be a minimum of 5 seconds longer or reduce the TIMEOUT in "define(\'TIMEOUT\', ' . TIMEOUT . ');"');
         } else if (isset($_GET['url']) === false || strlen($_GET['url']) === 0) {
             $response = array('error' => 'No such parameter "url"');
-        } else if (isHttpUrl($_GET['url']) === false) {
+        } else if ($this->isHttpUrl($_GET['url']) === false) {
             $response = array('error' => 'Only http scheme and https scheme are allowed');
         } else if (preg_match('#[^A-Za-z0-9_[.]\\[\\]]#', $param_callback) !== 0) {
             $response = array('error' => 'Parameter "callback" contains invalid characters');
             $param_callback = JSLOG;
-        } else if (createFolder() === false) {
-            $err = get_error();
+        } else if ($this->createFolder() === false) {
+            $err = $this->get_error();
             $response = array('error' => 'Can not create directory' . (
                 $err !== null && isset($err['message']) && strlen($err['message']) > 0 ? (': ' . $err['message']) : ''
                 ));
@@ -34,15 +34,15 @@ class Html2CanvasProxy
         } else {
             $http_port = (int)$_SERVER['SERVER_PORT'];
 
-            $tmp = createTmpFile($_GET['url'], false);
+            $tmp = $this->createTmpFile($_GET['url'], false);
             if ($tmp === false) {
-                $err = get_error();
+                $err = $this->get_error();
                 $response = array('error' => 'Can not create file' . (
                     $err !== null && isset($err['message']) && strlen($err['message']) > 0 ? (': ' . $err['message']) : ''
                     ));
                 $err = null;
             } else {
-                $response = downloadSource($_GET['url'], $tmp['source'], 0);
+                $response = $this->downloadSource($_GET['url'], $tmp['source'], 0);
                 fclose($tmp['source']);
             }
         }
@@ -67,15 +67,15 @@ class Html2CanvasProxy
 
                 if (rename($tmp['location'], $locationFile)) {
                     //set cache
-                    setHeaders(false);
+                    $this->setHeaders(false);
 
-                    remove_old_files();
+                    $this->remove_old_files();
 
                     if (CROSS_DOMAIN === 1) {
-                        $mime = JsonEncodeString($response['mime'], true);
+                        $mime = $this->JsonEncodeString($response['mime'], true);
                         $mime = $response['mime'];
                         if ($response['encode'] !== null) {
-                            $mime .= ';charset=' . JsonEncodeString($response['encode'], true);
+                            $mime .= ';charset=' . $this->JsonEncodeString($response['encode'], true);
                         }
 
                         $tmp = $response = null;
@@ -88,7 +88,7 @@ class Html2CanvasProxy
                             '");';
                         } else {
                             echo $param_callback, '("data:', $mime, ',',
-                            asciiToInline(
+                            $this->asciiToInline(
                                 file_get_contents($locationFile)
                             ),
                             '");';
@@ -102,7 +102,7 @@ class Html2CanvasProxy
                         }
 
                         echo $param_callback, '(',
-                        JsonEncodeString(
+                        $this->JsonEncodeString(
                             ($http_port === 443 ? 'https://' : 'http://') .
                             preg_replace('#:[0-9]+$#', '', $_SERVER['HTTP_HOST']) .
                             ($http_port === 80 || $http_port === 443 ? '' : (
@@ -127,12 +127,12 @@ class Html2CanvasProxy
 
 
         //errors
-        setHeaders(true);//no-cache
+        $this->setHeaders(true);//no-cache
 
-        remove_old_files();
+        $this->remove_old_files();
 
         echo $param_callback, '(',
-        JsonEncodeString(
+        $this->JsonEncodeString(
             'error: html2canvas-proxy-php: ' . $response['error']
         ),
         ');';
@@ -472,7 +472,7 @@ class Html2CanvasProxy
         }
 
         if (file_exists($folder . $basename . $tmpMime)) {
-            return createTmpFile($basename, true);
+            return $this->createTmpFile($basename, true);
         }
 
         $source = fopen($folder . $basename . $tmpMime, 'w');
@@ -612,10 +612,10 @@ class Html2CanvasProxy
                             return array('error' => 'Invalid scheme in url (' . $nextUri . ')');
                         }
 
-                        if (isHttpUrl($data) === false) {
+                        if ($this->isHttpUrl($data) === false) {
                             return array('error' => '"Location:" header redirected for a non-http url (' . $data . ')');
                         }
-                        return downloadSource($data, $toSource, $caller);
+                        return $this->downloadSource($data, $toSource, $caller);
                     } else if (preg_match('#^content[-]length[:]( 0|0)$#i', $data) !== 0) {
                         fclose($fp);
                         $data = '';
