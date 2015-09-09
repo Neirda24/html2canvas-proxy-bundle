@@ -194,10 +194,10 @@ class Html2CanvasProxy
                     $this->remove_old_files();
 
                     if (true === $this->crossDomain) {
-                        $mime = $this->JsonEncodeString($this->response['mime'], true);
+                        $mime = json_encode($this->response['mime'], true);
                         $mime = $this->response['mime'];
                         if ($this->response['encode'] !== null) {
-                            $mime .= ';charset=' . $this->JsonEncodeString($this->response['encode'], true);
+                            $mime .= ';charset=' . json_encode($this->response['encode'], true);
                         }
 
                         $this->tmp = $this->response = null;
@@ -224,7 +224,7 @@ class Html2CanvasProxy
                         }
 
                         return $this->paramCallback.'('.
-                            $this->JsonEncodeString(
+                            json_encode(
                                 ($this->httpPort === 443 ? 'https://' : 'http://') .
                                 preg_replace('#:[0-9]+$#', '', $_SERVER['HTTP_HOST']) .
                                 ($this->httpPort === 80 || $this->httpPort === 443 ? '' : (
@@ -253,7 +253,7 @@ class Html2CanvasProxy
         $this->remove_old_files();
 
         return $this->paramCallback.'('.
-            $this->JsonEncodeString(
+            json_encode(
                 'error: html2canvas-proxy-php: ' . $this->response['error']
             ).
         ');';
@@ -324,7 +324,6 @@ class Html2CanvasProxy
             return true;
         }
 
-        /* PHP 5 */
         if (in_array('ssl', stream_get_transports())) {
             defined('SOCKET_SSL_STREAM', '1');
 
@@ -374,56 +373,6 @@ class Html2CanvasProxy
         }
 
         return null;
-    }
-
-    /**
-     * enconde string in "json" (only strings), json_encode (native in php) don't support for php4
-     *
-     * @param string $s to encode
-     * @param bool   $onlyEncode
-     *
-     * @return string always return string
-     */
-    protected function JsonEncodeString($s, $onlyEncode = false)
-    {
-        $vetor     = [];
-        $vetor[0]  = '\\0';
-        $vetor[8]  = '\\b';
-        $vetor[9]  = '\\t';
-        $vetor[10] = '\\n';
-        $vetor[12] = '\\f';
-        $vetor[13] = '\\r';
-        $vetor[34] = '\\"';
-        $vetor[47] = '\\/';
-        $vetor[92] = '\\\\';
-
-        $this->tmp = '';
-        $enc       = '';
-        $j         = strlen($s);
-
-        for ($i = 0; $i < $j; ++$i) {
-            $this->tmp = substr($s, $i, 1);
-            $c         = ord($this->tmp);
-            if ($c > 126) {
-                $d         = '000' . dechex($c);
-                $this->tmp = '\\u' . substr($d, strlen($d) - 4);
-            } else {
-                if (isset($vetor[$c])) {
-                    $this->tmp = $vetor[$c];
-                } elseif (($c > 31) === false) {
-                    $d         = '000' . dechex($c);
-                    $this->tmp = '\\u' . substr($d, strlen($d) - 4);
-                }
-            }
-
-            $enc .= $this->tmp;
-        }
-
-        if ($onlyEncode === true) {
-            return $enc;
-        } else {
-            return '"' . $enc . '"';
-        }
     }
 
     /**
