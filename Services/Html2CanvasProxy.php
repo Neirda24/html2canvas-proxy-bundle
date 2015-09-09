@@ -428,33 +428,29 @@ class Html2CanvasProxy
     }
 
     /**
-     * set headers in document
+     * Set headers in document
      *
      * @param boolean $nocache If false set cache (if self::CCACHE > 0), If true set no-cache in document
-     *
-     * @return void                 return always void
      */
     protected function setHeaders($nocache)
     {
-        if ($nocache === false && is_int(self::CCACHE) && self::CCACHE > 0) {
+        if (false === $nocache && is_int(self::CCACHE) && self::CCACHE > 0) {
             //save to browser cache
-            header('Last-Modified: ' . $this->gmDateCache . ' GMT');
-            header('Cache-Control: max-age=' . (self::CCACHE - 1));
-            header('Pragma: max-age=' . (self::CCACHE - 1));
-            header('Expires: ' . gmdate('D, d M Y H:i:s', $this->initExec + self::CCACHE - 1));
-            header('Access-Control-Max-Age:' . self::CCACHE);
+            $this->request->headers->set('Last-Modified', $this->gmDateCache . ' GMT');
+            $this->request->headers->addCacheControlDirective('max-age', (self::CCACHE - 1));
+            $this->request->headers->set('Expires', gmdate('D, d M Y H:i:s', $this->initExec + self::CCACHE - 1));
+            $this->request->headers->set('Access-Control-Max-Age', self::CCACHE);
         } else {
             //no-cache
-            header('Pragma: no-cache');
-            header('Cache-Control: no-cache');
-            header('Expires: ' . $this->gmDateCache . ' GMT');
+            $this->request->headers->removeCacheControlDirective('max-age');
+            $this->request->headers->set('Expires', $this->gmDateCache . ' GMT');
         }
 
         //set access-control
-        header('Access-Control-Allow-Origin: *');
-        header('Access-Control-Request-Method: *');
-        header('Access-Control-Allow-Methods: OPTIONS, GET');
-        header('Access-Control-Allow-Headers: *');
+        $this->request->headers->set('Access-Control-Allow-Origin', '*');
+        $this->request->headers->set('Access-Control-Request-Method', '*');
+        $this->request->headers->set('Access-Control-Allow-Methods', 'OPTIONS, GET');
+        $this->request->headers->set('Access-Control-Allow-Headers', '*');
     }
 
     /**
