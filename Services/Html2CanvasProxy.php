@@ -148,7 +148,7 @@ class Html2CanvasProxy
             $this->response      = ['error' => 'Parameter "callback" contains invalid characters'];
             $this->paramCallback = self::JS_LOG;
         } elseif ($this->createFolder() === false) {
-            $err            = $this->get_error();
+            $err            = error_get_last();
             $this->response = ['error' => 'Can not create directory' . (
                 $err !== null && isset($err['message']) && strlen($err['message']) > 0 ? (': ' . $err['message']) : ''
                 )];
@@ -158,7 +158,7 @@ class Html2CanvasProxy
 
             $this->tmp = $this->createTmpFile($_GET['url'], false);
             if ($this->tmp === false) {
-                $err            = $this->get_error();
+                $err            = error_get_last();
                 $this->response = ['error' => 'Can not create file' . (
                     $err !== null && isset($err['message']) && strlen($err['message']) > 0 ? (': ' . $err['message']) : ''
                     )];
@@ -191,7 +191,7 @@ class Html2CanvasProxy
                     //set cache
                     $this->setHeaders(false);
 
-                    $this->remove_old_files();
+                    $this->removeOldFiles();
 
                     if (true === $this->crossDomain) {
                         $mime = json_encode($this->response['mime'], true);
@@ -250,7 +250,7 @@ class Html2CanvasProxy
         //errors
         $this->setHeaders(true);//no-cache
 
-        $this->remove_old_files();
+        $this->removeOldFiles();
 
         return $this->paramCallback.'('.
             json_encode(
@@ -338,7 +338,7 @@ class Html2CanvasProxy
      *
      * @return void return always void
      */
-    protected function remove_old_files()
+    protected function removeOldFiles()
     {
         $p = $this->imagesPath . '/';
 
@@ -359,20 +359,6 @@ class Html2CanvasProxy
                 }
             }
         }
-    }
-
-    /**
-     * this function does not exist by default in php4.3, get detailed error in php5
-     *
-     * @return array   if has errors
-     */
-    protected function get_error()
-    {
-        if (function_exists('error_get_last') === false) {
-            return error_get_last();
-        }
-
-        return null;
     }
 
     /**
@@ -411,7 +397,7 @@ class Html2CanvasProxy
      */
     protected function relativeToAbsolute($u, $m)
     {
-        if (strpos($m, '//') === 0) {//http link //site.com/test
+        if (strpos($m, '//') === 0) {
             return 'http:' . $m;
         }
 
@@ -593,7 +579,8 @@ class Html2CanvasProxy
             return ['error' => 'SOCKET: ' . $errstr . '(' . ((string)$errno) . ')'];
         } else {
             fwrite(
-                $fp, 'GET ' . (
+                $fp,
+                'GET ' . (
                 isset($uri['path']) && strlen($uri['path']) > 0 ? $uri['path'] : '/'
                 ) . (
                 isset($uri['query']) && strlen($uri['query']) > 0 ? ('?' . $uri['query']) : ''
@@ -668,7 +655,7 @@ class Html2CanvasProxy
                 }
 
                 if ($isBody === false) {
-                    if (preg_match('#^location[:]#i', $data) !== 0) {//200 force 302
+                    if (preg_match('#^location[:]#i', $data) !== 0) {
                         fclose($fp);//Close connection
 
                         $data = trim(preg_replace('#^location[:]#i', '', $data));
