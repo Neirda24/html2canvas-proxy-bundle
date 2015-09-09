@@ -22,25 +22,11 @@ class HTML2CanvasProxyExtension extends Extension
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
-        $this->loadConfigApi($config, $container, 'api3a');
-        $this->loadConfigApi($config, $container, 'cloud');
-
         $loader = new Loader\XmlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
-        $loader->load('cache-warmer.xml');
         $loader->load('services.xml');
-    }
 
-    /**
-     * @param array            $config
-     * @param ContainerBuilder $container
-     * @param string           $configName
-     */
-    protected function loadConfigApi(array $config, ContainerBuilder $container, $configName)
-    {
-        $container->setParameter('api_client.'.$configName.'.config.api_url', $config['config'][$configName]['base_url']);
-        $container->setParameter('api_client.'.$configName.'.config.token_value', $config['config'][$configName]['token']);
-        $container->setParameter('api_client.'.$configName.'.config.debug', $config['config'][$configName]['debug']);
-        $container->setParameter('api_client.'.$configName.'.api_uris', $config['config'][$configName]['api_uris']);
-        $container->setParameter('api_client.'.$configName.'.config.prefix_url', $config['config'][$configName]['prefix_url']);
+        if (true === $config['exceptions']['handler']) {
+            $loader->load('exception_handler.xml');
+        }
     }
 }

@@ -2,6 +2,9 @@
 
 namespace HTML2Canvas\ProxyBundle\Exception;
 
+/**
+ * @todo: Change error status
+ */
 abstract class ErrorStatic
 {
     /**
@@ -22,45 +25,45 @@ abstract class ErrorStatic
     /**
      * @const int REQUEST_NOT_SEND
      */
-    const REQUEST_NOT_SEND = 0;
+    const REQUEST_NOT_SEND = 500;
 
     /**
      * @const int PORT_NOT_FOUND
      */
-    const PORT_NOT_FOUND = 1;
+    const PORT_NOT_FOUND = 500;
 
     /**
      * @const int SHORT_EXEC_TIME
      */
-    const SHORT_EXEC_TIME = 2;
+    const SHORT_EXEC_TIME = 500;
 
     /**
      * @const int SOCKET_EXEC_TIME
      */
-    const SOCKET_EXEC_TIME = 3;
+    const SOCKET_EXEC_TIME = 500;
 
     /**
      * @const int MISSING_URL_GET_PARAMETER
      */
-    const MISSING_URL_GET_PARAMETER = 4;
+    const MISSING_URL_GET_PARAMETER = 500;
 
     /**
      * @const int INVALID_CALLBACK_PARAMETER
      */
-    const INVALID_CALLBACK_PARAMETER = 5;
+    const INVALID_CALLBACK_PARAMETER = 500;
 
     /**
      * @const int FAILED_CREATE_DIRECTORY
      */
-    const FAILED_CREATE_DIRECTORY = 6;
+    const FAILED_CREATE_DIRECTORY = 500;
 
     /**
      * @const int FAILED_CREATE_FILE
      */
-    const FAILED_CREATE_FILE = 7;
+    const FAILED_CREATE_FILE = 500;
 
     /**
      * @const int FAILED_RENAME_FILE
      */
-    const FAILED_RENAME_FILE = 8;
+    const FAILED_RENAME_FILE = 500;
 }

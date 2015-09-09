@@ -20,7 +20,19 @@ class Configuration implements ConfigurationInterface
         $treeBuilder = new TreeBuilder();
         $rootNode = $treeBuilder->root('html2canvas_proxy');
 
-        $rootNode;
+        $rootNode
+            ->children()
+                ->addDefaultsIfNotSet()
+                ->arrayNode('exceptions')
+                    ->children()
+                        ->booleanNode('handler')
+                            ->info('Define rather or not the handler must be active.')
+                            ->defaultTrue()
+                        ->end()
+                    ->end()
+                ->end()
+            ->end()
+        ;
 
         return $treeBuilder;
     }
