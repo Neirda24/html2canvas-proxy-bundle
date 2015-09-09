@@ -5,14 +5,14 @@
            xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
 
     <parameters>
-        <parameter key="html2canvasproxybundle.services.html2canvasproxy.class">HTML2Canvas\ProxyBundle\Controller\Html2CanvasProxyController</parameter>
+        <parameter key="html2canvasproxybundle.services.html2canvasproxy.class">HTML2Canvas\ProxyBundle\Services\Html2CanvasProxy</parameter>
     </parameters>
 
     <services>
         <service id="html2canvasproxybundle.services.html2canvasproxy" class="%html2canvasproxybundle.services.html2canvasproxy.class%">
             <argument type="service" id="request_stack"/>
-            <argument></argument>
-            <argument type="service" id="frontbundle.container.current_landing_site_container"/>
+            <argument>%html2canvas_proxy.config_proxy.image_path%</argument>
+            <argument>%html2canvas_proxy.config_proxy.cross_domain%</argument>
         </service>
     </services>
 </container>
