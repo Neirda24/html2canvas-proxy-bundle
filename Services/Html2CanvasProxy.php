@@ -2,6 +2,9 @@
 
 namespace HTML2Canvas\ProxyBundle\Services;
 
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
+
 class Html2CanvasProxy
 {
     /**
@@ -99,27 +102,35 @@ class Html2CanvasProxy
     protected $response = [];
 
     /**
-     * @param string $imagesPath
-     * @param string $crossDomain
+     * @var RequestStack
      */
-    public function __construct($imagesPath, $crossDomain)
+    protected $requestStack;
+
+    /**
+     * @var Request
+     */
+    protected $request = null;
+
+    /**
+     * @param RequestStack $requestStack
+     * @param string       $imagesPath
+     * @param string       $crossDomain
+     */
+    public function __construct(RequestStack $requestStack, $imagesPath, $crossDomain)
     {
-        $this->imagesPath  = $imagesPath;
-        $this->crossDomain = $crossDomain;
-        $this->eol         = chr(10);
-        $this->wol         = chr(13);
-        $this->gmDateCache = gmdate('D, d M Y H:i:s');
-        $maxExec           = (int)ini_get('max_execution_time');
-        $this->maxExecTime = $maxExec < 1 ? 0 : ($maxExec - 5);
+        $this->imagesPath   = $imagesPath;
+        $this->crossDomain  = $crossDomain;
+        $this->eol          = chr(10);
+        $this->wol          = chr(13);
+        $this->gmDateCache  = gmdate('D, d M Y H:i:s');
+        $maxExec            = (int)ini_get('max_execution_time');
+        $this->maxExecTime  = $maxExec < 1 ? 0 : ($maxExec - 5);
+        $this->requestStack = $requestStack;
     }
 
     public function execute()
     {
         $this->initRequest();
-
-        if (isset($_GET['callback']) && strlen($_GET['callback']) > 0) {
-            $this->paramCallback = $_GET['callback'];
-        }
 
         if (isset($_SERVER['HTTP_HOST']) === false || strlen($_SERVER['HTTP_HOST']) === 0) {
             $this->response = ['error' => 'The client did not send the Host header'];
@@ -134,24 +145,24 @@ class Html2CanvasProxy
         } elseif ($this->isHttpUrl($_GET['url']) === false) {
             $this->response = ['error' => 'Only http scheme and https scheme are allowed'];
         } elseif (preg_match('#[^A-Za-z0-9_[.]\\[\\]]#', $this->paramCallback) !== 0) {
-            $this->response       = ['error' => 'Parameter "callback" contains invalid characters'];
+            $this->response      = ['error' => 'Parameter "callback" contains invalid characters'];
             $this->paramCallback = self::JS_LOG;
         } elseif ($this->createFolder() === false) {
-            $err      = $this->get_error();
+            $err            = $this->get_error();
             $this->response = ['error' => 'Can not create directory' . (
                 $err !== null && isset($err['message']) && strlen($err['message']) > 0 ? (': ' . $err['message']) : ''
                 )];
-            $err      = null;
+            $err            = null;
         } else {
             $this->httpPort = (int)$_SERVER['SERVER_PORT'];
 
             $this->tmp = $this->createTmpFile($_GET['url'], false);
             if ($this->tmp === false) {
-                $err      = $this->get_error();
+                $err            = $this->get_error();
                 $this->response = ['error' => 'Can not create file' . (
                     $err !== null && isset($err['message']) && strlen($err['message']) > 0 ? (': ' . $err['message']) : ''
                     )];
-                $err      = null;
+                $err            = null;
             } else {
                 $this->response = $this->downloadSource($_GET['url'], $this->tmp['source'], 0);
                 fclose($this->tmp['source']);
@@ -250,15 +261,30 @@ class Html2CanvasProxy
 
     }
 
+    /**
+     * Initialize request properties.
+     */
     protected function initRequest()
     {
-        if (isset($_SERVER['REQUEST_TIME']) && strlen($_SERVER['REQUEST_TIME']) > 0) {
-            $initExec = (int)$_SERVER['REQUEST_TIME'];
-        } else {
-            $initExec = time();
+        $this->request = $this->requestStack->getCurrentRequest();
+        $this->request->headers->set('Content-Type', 'application/javascript');
+
+        $initExec = time();
+        if ($this->request->server->has('REQUEST_TIME')) {
+            $requestTime = $this->request->server->get('REQUEST_TIME');
+            if (strlen($requestTime) > 0) {
+                $initExec = (int) $requestTime;
+            }
         }
-        //set mime-type
-        header('Content-Type: application/javascript');
+
+        $this->initExec = $initExec;
+
+        if ($this->request->query->has('callback')) {
+            $paramCallback = $this->request->get('callback');
+            if (strlen($paramCallback) > 0) {
+                $this->paramCallback = $paramCallback;
+            }
+        }
     }
 
     /**
@@ -373,20 +399,20 @@ class Html2CanvasProxy
         $vetor[92] = '\\\\';
 
         $this->tmp = '';
-        $enc = '';
-        $j   = strlen($s);
+        $enc       = '';
+        $j         = strlen($s);
 
         for ($i = 0; $i < $j; ++$i) {
             $this->tmp = substr($s, $i, 1);
-            $c   = ord($this->tmp);
+            $c         = ord($this->tmp);
             if ($c > 126) {
-                $d   = '000' . dechex($c);
+                $d         = '000' . dechex($c);
                 $this->tmp = '\\u' . substr($d, strlen($d) - 4);
             } else {
                 if (isset($vetor[$c])) {
                     $this->tmp = $vetor[$c];
                 } elseif (($c > 31) === false) {
-                    $d   = '000' . dechex($c);
+                    $d         = '000' . dechex($c);
                     $this->tmp = '\\u' . substr($d, strlen($d) - 4);
                 }
             }
