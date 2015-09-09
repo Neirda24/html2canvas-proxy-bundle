@@ -4,6 +4,7 @@ namespace HTML2Canvas\ProxyBundle\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * HTML2Canvas Proxy Controller.
@@ -16,8 +17,8 @@ class Html2CanvasProxyController extends Controller
     public function indexAction(Request $request)
     {
         $html2CanvasProxy = $this->container->get('html2canvasproxybundle.services.html2canvasproxy');
-        $html2CanvasProxy->execute();
+        $response = $html2CanvasProxy->execute();
 
-        die();
+        return new Response($response);
     }
 }

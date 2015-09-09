@@ -203,16 +203,16 @@ class Html2CanvasProxy
                         $this->tmp = $this->response = null;
 
                         if (strpos($mime, 'image/svg') !== 0 && strpos($mime, 'image/') === 0) {
-                            echo $this->paramCallback, '("data:', $mime, ';base64,',
-                            base64_encode(
-                                file_get_contents($locationFile)
-                            ),
+                            return $this->paramCallback.'("data:'.$mime.';base64,'.
+                                base64_encode(
+                                    file_get_contents($locationFile)
+                                ).
                             '");';
                         } else {
-                            echo $this->paramCallback, '("data:', $mime, ',',
-                            $this->asciiToInline(
-                                file_get_contents($locationFile)
-                            ),
+                            return $this->paramCallback.'("data:'.$mime.','.
+                                $this->asciiToInline(
+                                    file_get_contents($locationFile)
+                                ).
                             '");';
                         }
                     } else {
@@ -223,19 +223,18 @@ class Html2CanvasProxy
                             $dir_name = '';
                         }
 
-                        echo $this->paramCallback, '(',
-                        $this->JsonEncodeString(
-                            ($this->httpPort === 443 ? 'https://' : 'http://') .
-                            preg_replace('#:[0-9]+$#', '', $_SERVER['HTTP_HOST']) .
-                            ($this->httpPort === 80 || $this->httpPort === 443 ? '' : (
-                                ':' . $_SERVER['SERVER_PORT']
-                            )) .
-                            $dir_name . '/' .
-                            $locationFile
-                        ),
+                        return $this->paramCallback.'('.
+                            $this->JsonEncodeString(
+                                ($this->httpPort === 443 ? 'https://' : 'http://') .
+                                preg_replace('#:[0-9]+$#', '', $_SERVER['HTTP_HOST']) .
+                                ($this->httpPort === 80 || $this->httpPort === 443 ? '' : (
+                                    ':' . $_SERVER['SERVER_PORT']
+                                )) .
+                                $dir_name . '/' .
+                                $locationFile
+                            ).
                         ');';
                     }
-                    exit;
                 } else {
                     $this->response = ['error' => 'Failed to rename the temporary file'];
                 }
@@ -253,10 +252,10 @@ class Html2CanvasProxy
 
         $this->remove_old_files();
 
-        echo $this->paramCallback, '(',
-        $this->JsonEncodeString(
-            'error: html2canvas-proxy-php: ' . $this->response['error']
-        ),
+        return $this->paramCallback.'('.
+            $this->JsonEncodeString(
+                'error: html2canvas-proxy-php: ' . $this->response['error']
+            ).
         ');';
 
     }
