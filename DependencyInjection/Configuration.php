@@ -18,11 +18,11 @@ class Configuration implements ConfigurationInterface
     public function getConfigTreeBuilder()
     {
         $treeBuilder = new TreeBuilder();
-        $rootNode = $treeBuilder->root('html2canvas_proxy');
+        $rootNode = $treeBuilder->root('html2_canvas_proxy');
 
         $rootNode
+            ->addDefaultsIfNotSet()
             ->children()
-//                ->addDefaultsIfNotSet()
                 ->arrayNode('exceptions')
                     ->children()
                         ->booleanNode('handler')

@@ -17,5 +17,7 @@ class Html2CanvasProxyController extends Controller
     {
         $html2CanvasProxy = $this->container->get('html2canvasproxybundle.services.html2canvasproxy');
         $html2CanvasProxy->execute();
+
+        die();
     }
 }
