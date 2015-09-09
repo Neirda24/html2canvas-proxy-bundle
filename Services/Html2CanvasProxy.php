@@ -658,10 +658,6 @@ class Html2CanvasProxy
             $data       = '';
 
             while (false === feof($fp)) {
-                if ($this->maxExecTime !== 0 && (time() - $this->initExec) >= $this->maxExecTime) {
-                    return ['error' => 'Maximum execution time of ' . ((string)($this->maxExecTime + 5)) . ' seconds exceeded, configure this with ini_set/set_time_limit or "php.ini" (if safe_mode is enabled)'];
-                }
-
                 $data = fgets($fp);
 
                 if ($data === false) {
@@ -676,23 +672,23 @@ class Html2CanvasProxy
                         return ['error' => 'This request did not return a HTTP response valid'];
                     }
 
-                    $this->tmp = preg_replace('#(HTTP/1[.]\\d |[^0-9])#i', '',
+                    $tmp = preg_replace('#(HTTP/1[.]\\d |[^0-9])#i', '',
                         preg_replace('#^(HTTP/1[.]\\d \\d{3}) [\\w\\W]+$#i', '$1', $data)
                     );
 
-                    if ($this->tmp === '304') {
+                    if ($tmp === '304') {
                         fclose($fp);//Close connection
                         $data = '';
 
                         return ['error' => 'Request returned HTTP_304, this status code is incorrect because the html2canvas not send Etag'];
                     } else {
-                        $isRedirect = preg_match('#^(301|302|303|307|308)$#', $this->tmp) !== 0;
+                        $isRedirect = preg_match('#^(301|302|303|307|308)$#', $tmp) !== 0;
 
-                        if ($isRedirect === false && $this->tmp !== '200') {
+                        if ($isRedirect === false && $tmp !== '200') {
                             fclose($fp);
                             $data = '';
 
-                            return ['error' => 'Request returned HTTP_' . $this->tmp];
+                            return ['error' => 'Request returned HTTP_' . $tmp];
                         }
 
                         $isHttp = true;
