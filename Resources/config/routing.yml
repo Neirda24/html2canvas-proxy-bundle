@@ -1,0 +1,3 @@
+html2Canvas_proxy:
+    path:     /html2Canvas-proxy
+    defaults: { _controller: HTML2CanvasProxyBundle:Html2CanvasProxy:index }

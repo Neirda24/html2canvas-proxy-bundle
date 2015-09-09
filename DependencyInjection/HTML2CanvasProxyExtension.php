@@ -22,11 +22,21 @@ class HTML2CanvasProxyExtension extends Extension
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
-        $loader = new Loader\XmlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
+        $loader = new Loader\XmlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
         $loader->load('services.xml');
 
         if (true === $config['exceptions']['handler']) {
             $loader->load('exception_handler.xml');
         }
+    }
+
+    /**
+     * @param array            $config
+     * @param ContainerBuilder $container
+     */
+    protected function loadConfigApi(array $config, ContainerBuilder $container)
+    {
+        $container->setParameter('html2canvas_proxy.config_proxy.image_path', $config['config_proxy']['image_path']);
+        $container->setParameter('html2canvas_proxy.config_proxy.cross_domain', $config['config_proxy']['cross_domain']);
     }
 }
