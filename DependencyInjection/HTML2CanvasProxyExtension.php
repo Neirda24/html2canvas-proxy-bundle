@@ -22,25 +22,24 @@ class HTML2CanvasProxyExtension extends Extension
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
-        $this->loadConfigApi($config, $container, 'api3a');
-        $this->loadConfigApi($config, $container, 'cloud');
+        $this->loadConfigApi($config, $container);
 
-        $loader = new Loader\XmlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
-        $loader->load('cache-warmer.xml');
+        $loader = new Loader\XmlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
         $loader->load('services.xml');
+
+        if (true === $config['exceptions']['handler']) {
+            $loader->load('exception_handlers.xml');
+        }
     }
 
     /**
      * @param array            $config
      * @param ContainerBuilder $container
-     * @param string           $configName
      */
-    protected function loadConfigApi(array $config, ContainerBuilder $container, $configName)
+    protected function loadConfigApi(array $config, ContainerBuilder $container)
     {
-        $container->setParameter('api_client.'.$configName.'.config.api_url', $config['config'][$configName]['base_url']);
-        $container->setParameter('api_client.'.$configName.'.config.token_value', $config['config'][$configName]['token']);
-        $container->setParameter('api_client.'.$configName.'.config.debug', $config['config'][$configName]['debug']);
-        $container->setParameter('api_client.'.$configName.'.api_uris', $config['config'][$configName]['api_uris']);
-        $container->setParameter('api_client.'.$configName.'.config.prefix_url', $config['config'][$configName]['prefix_url']);
+        $container->setParameter('html2canvas_proxy.config_proxy.images_path', $config['config_proxy']['images_path']);
+        $container->setParameter('html2canvas_proxy.config_proxy.cross_domain', $config['config_proxy']['cross_domain']);
+        $container->setParameter('html2canvas_proxy.config_proxy.screen_path', $config['config_proxy']['screen_path']);
     }
 }

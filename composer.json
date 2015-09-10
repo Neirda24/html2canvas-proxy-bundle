@@ -11,5 +11,17 @@
         "psr-4": {
             "HTML2Canvas\\ProxyBundle\\": ""
         }
-    }
+    },
+    "authors": [
+        {
+            "name": "Adrien Schaegis",
+            "email": "rochesadrien@gmail.com",
+            "role": "Developer"
+        },
+        {
+            "name": "Christophe Chausseray",
+            "email": "chausseray.christophe@gmail.com",
+            "role": "Developer"
+        }
+    ]
 }

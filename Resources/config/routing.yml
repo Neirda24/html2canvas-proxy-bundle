@@ -1,0 +1,7 @@
+html2Canvas_proxy:
+    path:     /proxy
+    defaults: { _controller: HTML2CanvasProxyBundle:Html2CanvasProxy:index }
+
+html2Canvas_generate_screen:
+    path:     /generate-screen
+    defaults: { _controller: HTML2CanvasProxyBundle:Html2CanvasProxy:generateScreen }
