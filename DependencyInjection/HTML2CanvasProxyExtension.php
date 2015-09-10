@@ -38,7 +38,8 @@ class HTML2CanvasProxyExtension extends Extension
      */
     protected function loadConfigApi(array $config, ContainerBuilder $container)
     {
-        $container->setParameter('html2canvas_proxy.config_proxy.image_path', $config['config_proxy']['image_path']);
+        $container->setParameter('html2canvas_proxy.config_proxy.images_path', $config['config_proxy']['images_path']);
         $container->setParameter('html2canvas_proxy.config_proxy.cross_domain', $config['config_proxy']['cross_domain']);
+        $container->setParameter('html2canvas_proxy.config_proxy.screen_path', $config['config_proxy']['screen_path']);
     }
 }

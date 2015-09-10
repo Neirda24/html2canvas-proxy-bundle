@@ -11,7 +11,7 @@
     <services>
         <service id="html2canvasproxybundle.services.html2canvasproxy" class="%html2canvasproxybundle.services.html2canvasproxy.class%">
             <argument type="service" id="request_stack"/>
-            <argument>%html2canvas_proxy.config_proxy.image_path%</argument>
+            <argument>%html2canvas_proxy.config_proxy.images_path%</argument>
             <argument>%html2canvas_proxy.config_proxy.cross_domain%</argument>
         </service>
     </services>
