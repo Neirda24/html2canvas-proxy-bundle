@@ -2,6 +2,9 @@
 
 namespace HTML2Canvas\ProxyBundle\Services;
 
+use HTML2Canvas\ProxyBundle\Exception\ErrorStatic as Error;
+use HTML2Canvas\ProxyBundle\Exception\HTML2CanvasProxyException;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -128,35 +131,69 @@ class Html2CanvasProxy
         $this->requestStack = $requestStack;
     }
 
+    /**
+     * @param string $error
+     * @param array  $messageParams
+     *
+     * @throws HTML2CanvasProxyException
+     */
+    protected function raiseError($error, array $messageParams = [])
+    {
+        $errorMessages = Error::MESSAGES;
+
+        list($errNum, $code) = explode('-', $error);
+
+        $message = str_replace(array_keys($messageParams), array_values($messageParams), $errorMessages[$error]);
+
+        throw new HTML2CanvasProxyException($message, $code);
+    }
+
+    /**
+     * @throws HTML2CanvasProxyException
+     *
+     * @return bool
+     */
+    protected function validateRequest()
+    {
+        if (!($this->request instanceof Request)) {
+            $this->initRequest();
+        }
+
+        if (!$this->request->server->has('HTTP_HOST') || strlen($this->request->server->get('HTTP_HOST')) === 0) {
+            $this->raiseError(Error::REQUEST_NOT_SEND);
+        } elseif (!$this->request->server->has('SERVER_PORT')) {
+            $this->raiseError(Error::PORT_NOT_FOUND);
+        } elseif ($this->maxExecTime < 10) {
+            $this->raiseError(Error::SHORT_EXEC_TIME, [
+                '#seconds#' => 15,
+            ]);
+        } elseif ($this->maxExecTime <= self::SOCKET_TIMEOUT) {
+            $this->raiseError(Error::SOCKET_EXEC_TIME, [
+                '#SOCKET_TIMEOUT#' => self::SOCKET_TIMEOUT
+            ]);
+        } elseif (!$this->request->query->has('url') || strlen($this->request->query->get('url')) === 0) {
+            $this->raiseError(Error::MISSING_URL_GET_PARAMETER);
+        } elseif (0 !== preg_match('#[^A-Za-z0-9_[.]\\[\\]]#', $this->paramCallback)) {
+            $this->raiseError(Error::INVALID_CALLBACK_PARAMETER);
+        }
+
+        return true;
+    }
+
+    /**
+     * @return string
+     *
+     * @throws HTML2CanvasProxyException
+     */
     public function execute()
     {
         $this->initRequest();
 
-        if (isset($_SERVER['HTTP_HOST']) === false || strlen($_SERVER['HTTP_HOST']) === 0) {
-            $this->response = ['error' => 'The client did not send the Host header'];
-        } elseif (isset($_SERVER['SERVER_PORT']) === false) {
-            $this->response = ['error' => 'The Server-proxy did not send the PORT (configure PHP)'];
-        } elseif ($this->maxExecTime < 10) {
-            $this->response = ['error' => 'Execution time is less 15 seconds, configure this with ini_set/set_time_limit or "php.ini" (if safe_mode is enabled), recommended time is 30 seconds or more'];
-        } elseif ($this->maxExecTime <= self::SOCKET_TIMEOUT) {
-            $this->response = ['error' => 'The execution time is not configured enough to self::SOCKET_TIMEOUT in SOCKET, configure this with ini_set/set_time_limit or "php.ini" (if safe_mode is enabled), recommended that the "max_execution_time =;" be a minimum of 5 seconds longer or reduce the self::SOCKET_TIMEOUT in "define(\'self::SOCKET_TIMEOUT\', ' . self::SOCKET_TIMEOUT . ');"'];
-        } elseif (isset($_GET['url']) === false || strlen($_GET['url']) === 0) {
-            $this->response = ['error' => 'No such parameter "url"'];
-        } elseif ($this->isHttpUrl($_GET['url']) === false) {
-            $this->response = ['error' => 'Only http scheme and https scheme are allowed'];
-        } elseif (preg_match('#[^A-Za-z0-9_[.]\\[\\]]#', $this->paramCallback) !== 0) {
-            $this->response      = ['error' => 'Parameter "callback" contains invalid characters'];
-            $this->paramCallback = self::JS_LOG;
-        } elseif ($this->createFolder() === false) {
-            $err            = error_get_last();
-            $this->response = ['error' => 'Can not create directory' . (
-                $err !== null && isset($err['message']) && strlen($err['message']) > 0 ? (': ' . $err['message']) : ''
-                )];
-            $err            = null;
-        } else {
-            $this->httpPort = (int)$_SERVER['SERVER_PORT'];
+        if ($this->validateRequest()) {
+            $this->httpPort = (int)$this->request->server->get('SERVER_PORT');
+            $url            = $this->request->query->get('url');
 
-            $this->tmp = $this->createTmpFile($_GET['url'], false);
+            $this->tmp = $this->createTmpFile($url, false);
             if ($this->tmp === false) {
                 $err            = error_get_last();
                 $this->response = ['error' => 'Can not create file' . (
@@ -164,80 +201,65 @@ class Html2CanvasProxy
                     )];
                 $err            = null;
             } else {
-                $this->response = $this->downloadSource($_GET['url'], $this->tmp['source'], 0);
+                $this->response = $this->downloadSource($url, $this->tmp['source'], 0);
                 fclose($this->tmp['source']);
             }
         }
 
         if (is_array($this->response) && isset($this->response['mime']) && strlen($this->response['mime']) > 0) {
             clearstatcache();
-            if (false === file_exists($this->tmp['location'])) {
-                $this->response = ['error' => 'Request was downloaded, but file can not be found, try again'];
-            } elseif (filesize($this->tmp['location']) < 1) {
-                $this->response = ['error' => 'Request was downloaded, but there was some problem and now the file is empty, try again'];
-            } else {
-                $extension = str_replace(['image/', 'text/', 'application/'], '', $this->response['mime']);
-                $extension = str_replace(['windows-bmp', 'ms-bmp'], 'bmp', $extension);
-                $extension = str_replace(['svg+xml', 'svg-xml'], 'svg', $extension);
-                $extension = str_replace('xhtml+xml', 'xhtml', $extension);
-                $extension = str_replace('jpeg', 'jpg', $extension);
+            $extension = str_replace(['image/', 'text/', 'application/'], '', $this->response['mime']);
+            $extension = str_replace(['windows-bmp', 'ms-bmp'], 'bmp', $extension);
+            $extension = str_replace(['svg+xml', 'svg-xml'], 'svg', $extension);
+            $extension = str_replace('xhtml+xml', 'xhtml', $extension);
+            $extension = str_replace('jpeg', 'jpg', $extension);
 
-                $locationFile = preg_replace('#[.][0-9_]+$#', '.' . $extension, $this->tmp['location']);
-                if (file_exists($locationFile)) {
-                    unlink($locationFile);
-                }
+            $locationFile = preg_replace('#[.][0-9_]+$#', '.' . $extension, $this->tmp['location']);
+            if (file_exists($locationFile)) {
+                unlink($locationFile);
+            }
 
-                if (rename($this->tmp['location'], $locationFile)) {
-                    //set cache
-                    $this->setHeaders(false);
+            if (rename($this->tmp['location'], $locationFile)) {
+                //set cache
+                $this->setHeaders(false);
 
-                    $this->removeOldFiles();
+                $this->removeOldFiles();
 
-                    if (true === $this->crossDomain) {
-                        $mime = json_encode($this->response['mime'], true);
-                        $mime = $this->response['mime'];
-                        if ($this->response['encode'] !== null) {
-                            $mime .= ';charset=' . json_encode($this->response['encode'], true);
-                        }
+                if (true === $this->crossDomain) {
+                    $mime = $this->response['mime'];
+                    if ($this->response['encode'] !== null) {
+                        $mime .= ';charset=' . json_encode($this->response['encode'], true);
+                    }
 
-                        $this->tmp = $this->response = null;
+                    $this->tmp = $this->response = null;
 
-                        if (strpos($mime, 'image/svg') !== 0 && strpos($mime, 'image/') === 0) {
-                            return $this->paramCallback.'("data:'.$mime.';base64,'.
-                                base64_encode(
-                                    file_get_contents($locationFile)
-                                ).
-                            '");';
-                        } else {
-                            return $this->paramCallback.'("data:'.$mime.','.
-                                $this->asciiToInline(
-                                    file_get_contents($locationFile)
-                                ).
-                            '");';
-                        }
+                    if (strpos($mime, 'image/svg') !== 0 && strpos($mime, 'image/') === 0) {
+                        return $this->paramCallback . '("data:' . $mime . ';base64,' . base64_encode(file_get_contents($locationFile)) . '");';
                     } else {
-                        $this->tmp = $this->response = null;
-
-                        $dir_name = dirname($_SERVER['SCRIPT_NAME']);
-                        if ($dir_name === '\/' || $dir_name === '\\') {
-                            $dir_name = '';
-                        }
-
-                        return $this->paramCallback.'('.
-                            json_encode(
-                                ($this->httpPort === 443 ? 'https://' : 'http://') .
-                                preg_replace('#:[0-9]+$#', '', $_SERVER['HTTP_HOST']) .
-                                ($this->httpPort === 80 || $this->httpPort === 443 ? '' : (
-                                    ':' . $_SERVER['SERVER_PORT']
-                                )) .
-                                $dir_name . '/' .
-                                $locationFile
-                            ).
-                        ');';
+                        return $this->paramCallback . '("data:' . $mime . ',' . $this->asciiToInline(file_get_contents($locationFile)) . '");';
                     }
                 } else {
-                    $this->response = ['error' => 'Failed to rename the temporary file'];
+                    $this->tmp = $this->response = null;
+
+                    $dir_name = dirname($_SERVER['SCRIPT_NAME']);
+                    if ($dir_name === '\/' || $dir_name === '\\') {
+                        $dir_name = '';
+                    }
+
+                    $json = json_encode(
+                        ($this->httpPort === 443 ? 'https://' : 'http://') .
+                        preg_replace('#:[0-9]+$#', '', $_SERVER['HTTP_HOST']) .
+                        ($this->httpPort === 80 || $this->httpPort === 443 ? '' : (
+                            ':' . $_SERVER['SERVER_PORT']
+                        )) .
+                        $dir_name . '/' .
+                        $locationFile
+                    );
+
+                    return $this->paramCallback . '(' . $json . ');';
                 }
+            } else {
+                $this->response = ['error' => 'Failed to rename the temporary file'];
             }
         }
 
@@ -252,36 +274,36 @@ class Html2CanvasProxy
 
         $this->removeOldFiles();
 
-        return $this->paramCallback.'('.
-            json_encode(
-                'error: html2canvas-proxy-php: ' . $this->response['error']
-            ).
-        ');';
+        return $this->paramCallback . '(' . json_encode('error: html2canvas-proxy-php: ' . $this->response['error']) . ');';
 
     }
 
     /**
      * Initialize request properties.
+     *
+     * @param bool $force
      */
-    protected function initRequest()
+    protected function initRequest($force = false)
     {
-        $this->request = $this->requestStack->getCurrentRequest();
-        $this->request->headers->set('Content-Type', 'application/javascript');
+        if (!($this->request instanceof Request) || true === $force) {
+            $this->request = $this->requestStack->getCurrentRequest();
+            $this->request->headers->set('Content-Type', 'application/javascript');
 
-        $initExec = time();
-        if ($this->request->server->has('REQUEST_TIME')) {
-            $requestTime = $this->request->server->get('REQUEST_TIME');
-            if (strlen($requestTime) > 0) {
-                $initExec = (int) $requestTime;
+            $initExec = time();
+            if ($this->request->server->has('REQUEST_TIME')) {
+                $requestTime = $this->request->server->get('REQUEST_TIME');
+                if (strlen($requestTime) > 0) {
+                    $initExec = (int)$requestTime;
+                }
             }
-        }
 
-        $this->initExec = $initExec;
+            $this->initExec = $initExec;
 
-        if ($this->request->query->has('callback')) {
-            $paramCallback = $this->request->get('callback');
-            if (strlen($paramCallback) > 0) {
-                $this->paramCallback = $paramCallback;
+            if ($this->request->query->has('callback')) {
+                $paramCallback = $this->request->get('callback');
+                if (strlen($paramCallback) > 0) {
+                    $this->paramCallback = $paramCallback;
+                }
             }
         }
     }
@@ -336,11 +358,11 @@ class Html2CanvasProxy
     /**
      * set headers in document
      *
-     * @return void return always void
+     * @return void
      */
     protected function removeOldFiles()
     {
-        $p = $this->imagesPath . '/';
+        $p = rtrim($this->imagesPath, '/') . '/';
 
         if (
             ($this->maxExecTime === 0 || (time() - $this->initExec) < $this->maxExecTime) && //prevents this function locks the process that was completed
@@ -493,15 +515,13 @@ class Html2CanvasProxy
     /**
      * create folder for images download
      *
-     * @return boolean      return always boolean
+     * @return boolean
      */
     protected function createFolder()
     {
-        if (file_exists($this->imagesPath) === false || is_dir($this->imagesPath) === false) {
-            return mkdir($this->imagesPath, 0755);
-        }
+        $fs = new Filesystem();
 
-        return true;
+        $fs->mkdir($this->imagesPath);
     }
 
     /**
@@ -522,7 +542,7 @@ class Html2CanvasProxy
         //$basename .= $basename;
         $tmpMine = '.' . mt_rand(0, 1000) . '_';
         if ($isEncode === true) {
-            $tmpMine .= isset($_SERVER['REQUEST_TIME']) && strlen($_SERVER['REQUEST_TIME']) > 0 ? $_SERVER['REQUEST_TIME'] : (string)time();
+            $tmpMine .= $this->request->server->get('REQUEST_TIME', (string)time());
         } else {
             $tmpMine .= (string)$this->initExec;
         }

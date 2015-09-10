@@ -24,6 +24,7 @@ class Configuration implements ConfigurationInterface
             ->addDefaultsIfNotSet()
             ->children()
                 ->arrayNode('exceptions')
+                    ->addDefaultsIfNotSet()
                     ->children()
                         ->booleanNode('handler')
                             ->info('Define rather or not the handler must be active.')
