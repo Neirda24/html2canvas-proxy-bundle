@@ -18,9 +18,38 @@ class Configuration implements ConfigurationInterface
     public function getConfigTreeBuilder()
     {
         $treeBuilder = new TreeBuilder();
-        $rootNode = $treeBuilder->root('html2canvas_proxy');
+        $rootNode = $treeBuilder->root('html2_canvas_proxy');
 
-        $rootNode;
+        $rootNode
+            ->addDefaultsIfNotSet()
+            ->children()
+                ->arrayNode('exceptions')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->booleanNode('handler')
+                            ->info('Define rather or not the handler must be active.')
+                            ->defaultTrue()
+                        ->end()
+                    ->end()
+                ->end()
+                ->arrayNode('config_proxy')
+                    ->children()
+                        ->scalarNode('images_path')
+                            ->info('Define images path.')
+                            ->isRequired()
+                        ->end()
+                        ->booleanNode('cross_domain')
+                            ->info('Define if the cross domain is activated or not.')
+                            ->defaultTrue()
+                        ->end()
+                        ->scalarNode('screen_path')
+                            ->info('Define screen path.')
+                            ->isRequired()
+                        ->end()
+                    ->end()
+                ->end()
+            ->end()
+        ;
 
         return $treeBuilder;
     }
