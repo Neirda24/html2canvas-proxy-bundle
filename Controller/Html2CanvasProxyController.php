@@ -5,6 +5,7 @@ namespace HTML2Canvas\ProxyBundle\Controller;
 use HTML2Canvas\ProxyBundle\Event\ScreenPathEvent;
 use HTML2Canvas\ProxyBundle\HTML2CanvasProxyEvents;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,6 +31,7 @@ class Html2CanvasProxyController extends Controller
      */
     public function generateScreenAction(Request $request)
     {
+        $fs          = new Filesystem();
         $dispatcher  = $this->get('event_dispatcher');
         $image       = $request->request->get('image');
         $path        = $this->container->getParameter('html2canvas_proxy.config_proxy.screen_path');
@@ -40,6 +42,10 @@ class Html2CanvasProxyController extends Controller
 
         $image = str_replace('data:image/png;base64,', '', $image);
         $decoded = base64_decode($image);
+
+        if (false === $fs->exists($path)) {
+            $fs->mkdir($path);
+        }
 
         file_put_contents($screenPath, $decoded, LOCK_EX);
 
