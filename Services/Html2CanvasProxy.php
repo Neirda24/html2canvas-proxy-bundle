@@ -347,7 +347,7 @@ class Html2CanvasProxy
         }
 
         if (in_array('ssl', stream_get_transports())) {
-            defined('SOCKET_SSL_STREAM', '1');
+            define('SOCKET_SSL_STREAM', '1');
 
             return true;
         }
